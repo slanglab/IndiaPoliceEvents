@@ -1,0 +1,279 @@
+---
+title: "Untitled"
+author: "Andy Halterman"
+date: "1/27/2021"
+output: pdf_document
+---
+
+```{r}
+source("~/R/theme_pub.R")
+```
+
+```{r}
+library(ggplot2)
+library(dplyr)
+```
+
+
+```{r}
+labels_df <- read.csv("../annotations/all_labels.csv")
+labels_df$date <- as.Date(labels_df$date)
+
+labels_df[labels_df$label == "ALL", "label"] <- "ANY ACTION"
+labels_df[labels_df$label == "OTHER_RESPONSE", "label"] <- "FORCE"
+#labels_df[labels_df$label == "OTHER_RESPONSE", "label"] <- "FORCE"
+```
+
+```{r}
+unique(labels_df$label)
+```
+
+
+```{r}
+#colors <- c("ALL" = "#5ED6A3",  # light green
+#            "ANY ACTION" = "#5ED6A3",
+#            "ARREST" = "#66B2D2",  # blue
+#            "OTHER_RESPONSE" = "#E2E062",  # yellow
+#            "FORCE" = "#E2E062",  # yellow
+#            "KILL" = "#B56252", # red
+#            "FAIL" = "#B97EA7") # purple
+```
+
+```{r}
+colors <- c("ALL" = "#43a2ca",  # light green
+            "ANY ACTION" = "#43a2ca",
+            "ARREST" = "#8856a7",  # blue
+            "OTHER_RESPONSE" = "#E2E062",  # yellow
+            "FORCE" = "#e34a33",  # yellow
+            "KILL" = "#2ca25f", # red
+            "FAIL" = "#dd1c77") # purple
+```
+
+```{r}
+make_figure <- function(labels_df, subset_label){
+  print(subset_label)
+  counts <- labels_df %>% 
+    filter(label == subset_label) %>%
+    group_by(date, type) %>% 
+    summarize(count = n()) %>% 
+    tidyr::pivot_wider(id_cols = date, names_from = type, values_from = count)
+  
+  counts[is.na(counts)] <- 0
+  
+  keyword_spear <- cor.test(counts$gold_standard, counts$keyword_sent, method = "spearman",
+                            exact=FALSE)
+  mnli_spear <- cor.test(counts$gold_standard, counts$mnli_sent, method = "spearman",
+                         exact=FALSE)
+  
+  print(keyword_spear)
+  print(mnli_spear)
+  
+  keyword_mae <- round(mean(abs(counts$gold_standard - counts$keyword_sent)), 3)
+  mnli_mae <- round(mean(abs(counts$gold_standard - counts$mnli_sent)), 3)
+  
+  to_string <- as_labeller(c(`gold_standard` = "Gold Standard Annotations", 
+                           `keyword_sent` = paste0("Sentence Keyword Matching"), # (MAE: ",keyword_mae, ")"),
+                           `mnli_sent` = paste0("RoBERTa MNLI"))) # (MAE: ", mnli_mae, ")")))
+
+
+  daily_count <- labels_df %>% 
+    filter(label == subset_label, type %in% c("gold_standard", "keyword_sent", "mnli_sent")) %>%
+    group_by(date, type) %>% 
+    summarize(count = n()) 
+
+  plot <- ggplot(daily_count, aes(x = date, y = count, fill = type)) +
+    geom_bar(stat="identity") +
+    facet_wrap(~type, nrow = 3, labeller = to_string) +
+    guides(fill=FALSE)
+  return(plot)
+}
+    
+```
+
+```{r}
+make_figure(labels_df, "ANY ACTION")
+
+ggsave("social_aggregate_any.png", width=5, height=3)
+```
+
+
+```{r}
+make_figure(labels_df, "FAIL")+ ggtitle("FAIL")
+
+ggsave("social_aggregate_fail.png", width=5, height=3)
+```
+
+```{r}
+make_figure(labels_df, "KILL") + ggtitle("KILL")
+
+ggsave("social_aggregate_kill.png", width=5, height=3)
+```
+
+```{r}
+make_figure(labels_df, "ARREST")+ ggtitle("ARREST")
+
+ggsave("social_aggregate_arrest.png", width=5, height=3)
+```
+
+```{r}
+make_figure(labels_df, "FORCE")+ ggtitle("FORCE")
+
+ggsave("social_aggregate_force.png", width=5, height=3)
+```
+
+```{r}
+make_figure(labels_df, "ANY ACTION") + ggtitle("ANY ACTION")
+ggsave("social_aggregate_any.png", width=5, height=3)
+```
+
+## MAE vs. F1
+
+First, get MAE for all event classes
+
+```{r}
+counts <- labels_df %>% 
+    group_by(label, date, type) %>% 
+    summarize(count = n()) %>% 
+  ungroup()
+
+
+counts <-  tidyr::pivot_wider(counts, id_cols = c(date, label), 
+                              names_from = type, values_from = count)
+```
+
+```{r}
+counts$keyword_sent_mae <-  abs(counts$gold_standard - counts$keyword_sent)
+
+counts$mnli_sent_mae <-  abs(counts$gold_standard - counts$mnli_sent)
+```
+
+```{r}
+mae_stats <- counts %>% 
+  select(label, keyword_sent_mae, mnli_sent_mae) %>% 
+  reshape2::melt(id.vars = "label") 
+
+mae_stats[is.na(mae_stats$value), "value"] <- 0
+mae_stats <- mae_stats %>% 
+  group_by(label, variable) %>% 
+  summarize(mae = mean(value, na.rm=TRUE))
+```
+
+```{r}
+#mae_stats$text_level <- "doc"
+#mae_stats[grep("sent", mae_stats$variable), "text_level"] <- "sent"
+mae_stats[mae_stats$variable == "keyword_sent_mae", "model"] <- "Keyword-Sent"
+mae_stats[mae_stats$variable == "mnli_sent_mae", "model"] <- "RoBERTa+MNLI"
+```
+
+
+```{r}
+pr <- read.csv("final_results_classification.csv")
+pr <- pr %>% 
+  filter(text_level == "sent", eval_level == "sent") %>% 
+  select(text_level, model, f1, query) 
+
+pr[pr$model == "keyword", "model"] <- "Keyword-Sent"
+pr[pr$model == "mnli",  "model"] <- "RoBERTa+MNLI"
+
+pr$label <- pr$query
+pr[pr$label == "ALL", "label"] <- "ANY ACTION"
+pr[pr$label == "OTHER_RESPONSE", "label"] <- "FORCE"
+```
+
+```{r}
+both <- left_join(mae_stats, pr, by = c("model", "label"))
+```
+
+```{r}
+both$label <- factor(both$label, levels = c("KILL","ARREST", "FAIL", "FORCE","ANY ACTION"))
+
+mae_f1_plot <- both %>% 
+  filter(mae < 20) %>% 
+  ggplot(., aes(x = f1, y = mae, color = label, shape = model)) +
+  geom_point(size=3) +
+  #scale_y_reverse() +
+  scale_color_manual(values = colors) +
+  xlim(0, 1) +
+  labs(shape = "Model",
+       color = "Event Class",
+       y = "Social Aggregate MAE",
+       x = "Model F1") 
+
+ggsave(mae_f1_plot, filename = "f1_vs_mae.png", width=4, height=3)
+
+```
+
+## Redo with Spearman
+
+```{r}
+library(purrr)
+
+counts <- labels_df %>% 
+    group_by(date, type, label) %>% 
+    summarize(count = n()) %>% 
+    tidyr::pivot_wider(id_cols = c(date, label), names_from = type, values_from = count)
+
+counts[is.na(counts)] <- 0
+
+spear <- counts %>% 
+    group_by(label) %>% 
+    summarize(keyword_sent_spearman = first(cor(gold_standard, keyword_sent, method = "spearman")),
+              mnli_sent_spearman = first(cor(gold_standard, mnli_sent, method = "spearman")))
+
+```
+
+
+```{r}
+spear_stats <- spear %>% 
+  reshape2::melt(id.vars = "label") 
+
+```
+
+```{r}
+#mae_stats$text_level <- "doc"
+#mae_stats[grep("sent", mae_stats$variable), "text_level"] <- "sent"
+spear_stats[spear_stats$variable == "keyword_sent_spearman", "model"] <- "Keyword-Sent"
+spear_stats[spear_stats$variable == "mnli_sent_spearman", "model"] <- "RoBERTa+MNLI"
+
+spear_stats$spearman <- spear_stats$value
+```
+
+
+```{r}
+pr <- read.csv("final_results_classification.csv")
+pr <- pr %>% 
+  filter(text_level == "sent", eval_level == "sent") %>% 
+  select(text_level, model, f1, query) 
+
+pr[pr$model == "keyword", "model"] <- "Keyword-Sent"
+pr[pr$model == "mnli",  "model"] <- "RoBERTa+MNLI"
+
+pr$label <- pr$query
+pr[pr$label == "ALL", "label"] <- "ANY ACTION"
+pr[pr$label == "OTHER_RESPONSE", "label"] <- "FORCE"
+```
+
+```{r}
+both <- left_join(spear_stats, pr, by = c("model", "label"))
+```
+
+```{r}
+both$label <- factor(both$label, levels = c("KILL","ARREST", "FAIL", "FORCE","ANY ACTION"))
+
+spear_f1_plot <- both %>% 
+  ggplot(., aes(x = f1, y = spearman, color = label, shape = model)) +
+  geom_point(size=3) +
+  #scale_y_reverse() +
+  scale_color_manual(values = colors) +
+  xlim(0, 1) +
+  ylim(0, 1) +
+  labs(shape = "Model",
+       color = "Event Class",
+       y = "Spearman correlation",
+       x = "Model F1") 
+
+ggsave(spear_f1_plot, filename = "spearman_vs_mae.png", width=4, height=3)
+
+```
+
+

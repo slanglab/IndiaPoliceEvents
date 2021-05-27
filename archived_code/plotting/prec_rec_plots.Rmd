@@ -1,0 +1,89 @@
+---
+title: "Untitled"
+author: "Andy Halterman"
+date: "1/27/2021"
+output: pdf_document
+---
+
+```{r}
+source("~/R/theme_pub.R")
+```
+
+
+```{r}
+library(dplyr)
+library(ggplot2)
+library(gghighlight)
+library(lemon)
+```
+
+```{r}
+pr <- read.csv("final_results_classification.csv")
+```
+
+```{r}
+pr_sub <- pr %>% 
+  filter(text_level == "sent", eval_level == "sent") %>% 
+  select(query, model, precision, recall, f1) %>% 
+  reshape2::melt(., id.vars = c("query", "model"))
+```
+
+```{r}
+unique(pr$query)
+
+colors <- c("ALL" = "#43a2ca",  # light green
+            "ANY ACTION" = "#43a2ca",
+            "ARREST" = "#8856a7",  # blue
+            "OTHER_RESPONSE" = "#E2E062",  # yellow
+            "FORCE" = "#e34a33",  # yellow
+            "KILL" = "#2ca25f", # red
+            "FAIL" = "#dd1c77") # purple
+```
+
+
+
+```{r}
+pr[pr$query == "OTHER_RESPONSE", "query"] <- "FORCE"
+pr[pr$query == "ALL", "query"] <- "ANY ACTION"
+
+pr[pr$model == "mnli", "model"] <- "RoBERTA+MNLI"
+pr[pr$model == "keyword", "model"] <- "Keyword-Sent"
+
+plot <- pr %>% 
+  filter(text_level == "sent", eval_level == "sent") %>% 
+  ggplot(., aes(x = recall, y = precision, color = query, shape=model, group = query)) +
+    geom_point(size=2) +
+  gghighlight(use_direct_label = FALSE,
+                unhighlighted_params = list(size = 1,
+                                            color = alpha("grey", 0.9))) +
+
+  #ggrepel::geom_text_repel() +
+  xlim(0, 1) + ylim(0, 1) +
+  coord_fixed() +
+  guides(color = FALSE) +
+  facet_wrap(~query, nrow=2) +
+  scale_color_manual(values = colors)
+
+plot <- reposition_legend(plot, 'center', panel='panel-3-2')
+
+#ggsave(plot, filename = "precision_recall_plot.png", width=6, height=4)
+```
+
+```{r}
+pr$query <- factor(pr$query, levels = c("KILL","ARREST", "FAIL", "FORCE","ANY ACTION"))
+
+prec_rec_plot <- pr %>% 
+  filter(text_level == "sent", eval_level == "sent") %>% 
+  ggplot(., aes(x = recall, y = precision, color = query, shape=model)) +
+    geom_point(size=3) +
+  xlim(0, 1) + ylim(0, 1) +
+  coord_fixed() +
+  scale_color_manual(values = colors) +
+  labs(shape = "Model",
+       color = "Event Class",
+       y = "Precision",
+       x = "Recall")
+
+#ggsave(prec_rec_plot, filename = "precision_recall_single_plot.png", width=4, height=3)
+```
+

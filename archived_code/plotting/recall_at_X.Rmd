@@ -1,0 +1,185 @@
+---
+title: "Untitled"
+author: "Andy Halterman"
+date: "1/27/2021"
+output: pdf_document
+---
+
+```{r}
+source("~/R/theme_pub.R")
+```
+
+
+```{r}
+library(dplyr)
+library(ggplot2)
+library(gghighlight)
+library(lemon)
+```
+
+```{r}
+ms <- read.csv("msmarco.csv")
+#ms <- read.csv("katie_predictions/mnli_window/result.csv")
+```
+
+
+
+```{r}
+colors <- c("ALL" = "#43a2ca",  # light green
+            "ANY ACTION" = "#43a2ca",
+            "ARREST" = "#8856a7",  # blue
+            "OTHER_RESPONSE" = "#E2E062",  # yellow
+            "FORCE" = "#e34a33",  # yellow
+            "KILL" = "#2ca25f", # red
+            "FAIL" = "#dd1c77") # purple
+```
+
+```{r}
+ms_pass <- ms %>% 
+  mutate(passed = Recall >= 0.95) %>% 
+  group_by(Query) %>% 
+  summarize(prop_read = which(passed & !duplicated(passed)) / max(Rank))
+```
+
+```{r}
+ms$prop_read <- ms$Rank / max(ms$Rank)
+```
+
+
+```{r}
+ms_pass$xmin <- ms_pass$prop_read - 0.03
+ms_pass$xmax  <- ms_pass$prop_read + 0.03
+ms_pass$ymin  <- 0.25 - (nchar(ms_pass$Query) / 50)
+ms_pass$ymax  <- 0.25 + (nchar(ms_pass$Query) / 50)
+
+ggplot(ms, aes(x = prop_read, color = Query)) + 
+  geom_line(aes(y = Recall)) +
+  geom_hline(yintercept = 0.95, linetype=2) +
+  labs(x = "Proportion of Corpus Read") +
+    scale_color_manual(values = colors) +
+  geom_vline(data = ms_pass, aes(xintercept = prop_read, color = Query),
+             linetype=2) +
+  geom_rect(data = ms_pass, inheret.aes=FALSE, 
+            aes(ymin=ymin, ymax=ymax, xmin=xmin, xmax=xmax),
+            fill = "white", color="white") +
+    geom_text(data = ms_pass, aes(x = prop_read, y = 0.25, label = Query),
+            angle = 90, show.legend=FALSE) +
+  theme(legend.position = "hide")
+
+ggsave("recall_at_x_msmarco.png",  width=6, height=4)
+```
+
+
+
+### MNLI
+
+```{r}
+ms <- read.csv("recall_gain_curve_mnli.csv")
+
+ms$Rank <- ms$ranks
+ms$Recall <- ms$recall_at_rank
+ms$Query <- ms$query
+
+ms$Query[ms$Query == "OTHER_RESPONSE"] <- "FORCE"
+ms$Query[ms$Query == "ALL"] <- "ANY ACTION"
+```
+
+
+```{r}
+ms_pass <- ms %>% 
+  mutate(passed = Recall >= 0.95) %>% 
+  group_by(Query) %>% 
+  summarize(prop_read = which(passed & !duplicated(passed)) / max(Rank))
+
+ms$prop_read <- ms$Rank / max(ms$Rank)
+```
+
+
+```{r}
+ms_pass$xmin <- ms_pass$prop_read - 0.01
+ms_pass$xmax  <- ms_pass$prop_read + 0.01
+ms_pass$ymin  <- 0.25 - (nchar(ms_pass$Query) / 45)
+ms_pass$ymax  <- 0.25 + (nchar(ms_pass$Query) / 45)
+
+recall_at_x <- ggplot(ms, aes(x = prop_read, color = Query)) + 
+  geom_line(aes(y = Recall)) +
+  geom_hline(yintercept = 0.95, 
+             linetype=3) +
+  labs(x = "Proportion of Corpus Read") +
+    scale_color_manual(values = colors) +
+  geom_vline(data = ms_pass, aes(xintercept = prop_read),
+             linetype=1, color = "grey") +
+  geom_rect(data = ms_pass, 
+            aes(ymin=ymin, ymax=ymax, xmin=xmin, xmax=xmax),
+            fill = "white", color="white") +
+    geom_text(data = ms_pass, aes(x = prop_read, y = 0.25, label = Query),
+            angle = 90, show.legend=FALSE, size=3) +
+  scale_y_continuous(breaks = c(0, 0.25, 0.50, 0.75, 0.95, 1)) +
+  scale_x_continuous(breaks = c(0, 0.50, 1, ms_pass$prop_read),
+                     labels = scales::percent_format(accuracy = 1),
+                     guide = guide_axis(check.overlap = TRUE)) +
+  theme(legend.position = "hide") +
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank()) +
+  annotate("segment", x = 0.85, xend = 0.756, y = 0.72, yend = 0.95, 
+           colour = "black", size=0.25, alpha=1, 
+           arrow=arrow(type="closed", angle=15,
+                       length = unit(0.1, "inches"))) +
+   annotate("text", x = 0.9, y = 0.39, 
+          label = "Need to read\n76% of\ndocuments to\nlocate 95% of\nthe\"fail\" \nevents" ,
+          color="black", 
+          size=2.2 , angle=0)
+
+        #axis.line = element_line(colour = "black"))
+
+ggsave("recall_at_x_mnli2.png",  width=4, height=3)
+```
+
+
+### 
+
+```{r}
+library(patchwork)
+
+prec_rec_plot2 <- prec_rec_plot + 
+  labs(title = "Task 1") +
+  theme(axis.line = element_line(size = 0.3, colour = "black"))
+
+
+#mae_f1_plot2 <- mae_f1_plot +
+spear_f1_plot2 <- spear_f1_plot +
+  guides(fill = FALSE,
+         color = FALSE,
+         shape = FALSE) +
+  labs(title = "Task 1 vs 3",
+       y = "\u03C1 of gold-standard and model\npredictions for temporal aggregates") +
+  theme(axis.line = element_line(size = 0.3, colour = "black"))
+
+recall_at_x2 <- recall_at_x +
+  guides(fill = FALSE,
+         color = FALSE,
+         shape = FALSE) +
+  labs(title = "Task 2") +
+    theme(axis.line = element_line(size = 0.3, colour = "black"))
+
+
+prec_rec_plot2 + recall_at_x2 + spear_f1_plot2 + 
+  plot_layout(guides = 'collect') + 
+  plot_layout(widths = c(1, 1.5, 1), 
+              heights = c(2, 2, 2)) & 
+  theme(legend.position = 'left')
+   
+
+ggsave(filename = "spear_precrec_recall_at.png", width=8, height=8)
+```
+
+```{r}
+(prec_rec_plot2  + spear_f1_plot2) / recall_at_x2 + 
+  plot_layout(guides = 'collect') + 
+  plot_layout(widths = c(1, 1), 
+              heights = c(0.8, 1)) & 
+  theme(legend.position = 'left')
+ggsave(filename = "spear_precrec_recall_at2.png", width=7, height=6)
+
+```
+

@@ -1,0 +1,27 @@
+---
+title: "compare_f1_mae"
+author: "Andy Halterman"
+date: "1/31/2021"
+output: pdf_document
+---
+
+```{r}
+source("~/R/theme_pub.R")
+```
+
+```{r}
+library(ggplot2)
+library(dplyr)
+```
+
+```{r}
+pr <- read.csv("final_results_classification.csv")
+```
+
+```{r}
+labels_df <- read.csv("all_labels.csv")
+labels_df$date <- as.Date(labels_df$date)
+
+labels_df <- labels_df[!is.na(labels_df$label),]
+```
+
