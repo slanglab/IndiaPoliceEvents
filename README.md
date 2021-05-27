@@ -43,13 +43,13 @@ Script with the evaluation metrics for Task 1-3 in the paper.
 
 Example usage: 
 ```
- python evaluate.py sent_predictions.csv 1
+python evaluate.py sent_predictions.csv 1
 
 python evaluate.py document_ranking_predictions.csv 2
 
 python evaluate.py document_classification_predictions.csv 3
 ```
-Where `sent_predictions.csv`, `document_ranking_predictions.csv`, `document_classification_predictions.csv` are your own prediction files whose document and sentence order match the corresponding gold-standard .csv files in this repository: `data/final/*.csv`.
+Where `sent_predictions.csv`, `document_ranking_predictions.csv`, and `document_classification_predictions.csv` are your own prediction files whose document and sentence order match the corresponding gold-standard .csv files: `data/final/*.csv`.
 
 ## explore_data.ipynb
 
