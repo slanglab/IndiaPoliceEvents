@@ -1,7 +1,7 @@
 # IndiaPoliceEvents
 
-Data and code to accompany the paper: Halterman, Keith, Sarwar, and O'Connor. "Corpus-Level Evaluation for Event QA:
-The IndiaPoliceEvents Corpus Covering the 2002 Gujarat Violence." Findings of ACL, 2021. 
+Data and code to accompany the paper: Halterman, Keith, Sarwar, and O'Connor. ["Corpus-Level Evaluation for Event QA:
+The IndiaPoliceEvents Corpus Covering the 2002 Gujarat Violence."](https://arxiv.org/abs/2105.12936) Findings of ACL, 2021. 
 
 If you use this data or code, please cite the paper 
 
