@@ -1,17 +1,26 @@
 # IndiaPoliceEvents
 
 Data and code to accompany the paper: Halterman, Keith, Sarwar, and O'Connor. ["Corpus-Level Evaluation for Event QA:
-The IndiaPoliceEvents Corpus Covering the 2002 Gujarat Violence."](https://arxiv.org/abs/2105.12936) Findings of ACL, 2021. 
+The IndiaPoliceEvents Corpus Covering the 2002 Gujarat Violence."](https://aclanthology.org/2021.findings-acl.371.pdf) Findings of ACL, 2021. 
 
-If you use this data or code, please cite the paper 
+If you use this data or code, please cite the paper:
 
 ```
 @inproceedings{halterman2021corpus,
-author = {Halterman, Andrew and Keith, Katherine A. and Sarwar, Sheikh Muhammad, and O'Connor, Brendan}, 
-title = {Corpus-Level Evaluation for Event {QA}:
-The {IndiaPoliceEvents} Corpus Covering the 2002 {G}ujarat Violence},
-booktitle = {{Findings of ACL}},
-year = 2021}
+    title = "Corpus-Level Evaluation for Event {QA}: The {I}ndia{P}olice{E}vents Corpus Covering the 2002 {G}ujarat Violence",
+    author = "Halterman, Andrew  and
+      Keith, Katherine  and
+      Sarwar, Sheikh  and
+      O{'}Connor, Brendan",
+    booktitle = "Findings of the Association for Computational Linguistics: ACL-IJCNLP 2021",
+    month = aug,
+    year = "2021",
+    address = "Online",
+    publisher = "Association for Computational Linguistics",
+    url = "https://aclanthology.org/2021.findings-acl.371",
+    doi = "10.18653/v1/2021.findings-acl.371",
+    pages = "4240--4253",
+}
 ```
 
 ## Directory structure 
